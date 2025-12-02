@@ -1,0 +1,35 @@
+# Binaries
+main
+server
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+test_data/
+uploads/
+*.pdf
+
+# Environment
+.env
+.env.local
+
+# Go
+*.test
+*.out
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

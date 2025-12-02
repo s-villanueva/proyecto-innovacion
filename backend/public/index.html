@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Document Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"
+        type="application/javascript"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9fafb;
+            color: #1f2937;
+        }
+
+        h1 {
+            color: #111827;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background-color: #1d4ed8;
+        }
+
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #4b5563;
+        }
+
+        .doc-item {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .doc-item:last-child {
+            border-bottom: none;
+        }
+
+        .doc-info {
+            flex-grow: 1;
+        }
+
+        .doc-actions a {
+            color: #2563eb;
+            text-decoration: none;
+            margin-left: 10px;
+        }
+
+        .doc-actions a:hover {
+            text-decoration: underline;
+        }
+
+        .summary {
+            font-size: 0.85em;
+            color: #6b7280;
+            margin-top: 4px;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Blockchain Docs</h1>
+
+    <div class="card">
+        <div id="wallet-section">
+            <button id="connect-btn">Connect Wallet</button>
+            <span id="wallet-address" style="margin-left: 10px; font-family: monospace;"></span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Upload Document</h2>
+        <input type="file" id="file-input">
+        <input type="text" id="tag-input" placeholder="Tag (e.g., invoice, contract)">
+        <button id="upload-btn" disabled>Upload & Register</button>
+        <div id="status"></div>
+    </div>
+
+    <div class="card">
+        <h2>My Documents</h2>
+        <button id="refresh-btn" style="margin-bottom: 10px; font-size: 0.8em; padding: 5px 10px;">Refresh List</button>
+        <div id="doc-list">
+            <p>Connect wallet to see documents.</p>
+        </div>
+    </div>
+
+    <script>
+        const CONTRACT_ADDRESS = "0x4e9069579b5696f225C7D7cb859610bB0ce03c28"; // REPLACE THIS
+        const ABI = [
+            "function registerDocument(string filename, string fileHash, string minioId, string tag) returns(uint256 id)",
+            "function getDocumentsByName(string filename) view returns(uint256[])",
+            "function documentCount() view returns(uint256)",
+            "function documents(uint256) view returns(address uploader, string filename, string hash, string minioId, string tag, uint256 timestamp)"
+        ];
+
+        let provider, signer, contract;
+        let userAddress;
+
+        const connectBtn = document.getElementById('connect-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const statusDiv = document.getElementById('status');
+        const docList = document.getElementById('doc-list');
+        const refreshBtn = document.getElementById('refresh-btn');
+
+        // 1. Connect Wallet
+        connectBtn.addEventListener('click', async () => {
+            if (window.ethereum) {
+                try {
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    await provider.send("eth_requestAccounts", []);
+                    signer = provider.getSigner();
+                    userAddress = await signer.getAddress();
+
+                    // Enforce Sepolia (Chain ID 11155111 / 0xaa36a7)
+                    const network = await provider.getNetwork();
+                    if (network.chainId !== 11155111) {
+                        try {
+                            await window.ethereum.request({
+                                method: 'wallet_switchEthereumChain',
+                                params: [{ chainId: '0xaa36a7' }],
+                            });
+                            // Refresh provider after switch
+                            provider = new ethers.providers.Web3Provider(window.ethereum);
+                            signer = provider.getSigner();
+                        } catch (switchError) {
+                            // This error code indicates that the chain has not been added to MetaMask.
+                            if (switchError.code === 4902) {
+                                alert("Please add Sepolia network to Metamask");
+                            } else {
+                                alert("Please switch to Sepolia network manually");
+                            }
+                        }
+                    }
+
+                    document.getElementById('wallet-address').innerText = userAddress;
+                    connectBtn.innerText = "Connected (Sepolia)";
+                    connectBtn.disabled = true;
+                    uploadBtn.disabled = false;
+
+                    // Init contract
+                    // Note: You need to replace CONTRACT_ADDRESS with the actual address from .env or deployment
+                    // For now, we'll try to fetch it or ask user to input it if we were building a full app.
+                    // Here we assume it's hardcoded or injected.
+                    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+                    loadDocuments();
+                } catch (error) {
+                    console.error(error);
+                    alert("Connection failed: " + error.message);
+                }
+            } else {
+                alert("Please install Metamask!");
+            }
+        });
+
+        // 2. Upload Flow
+        uploadBtn.addEventListener('click', async () => {
+            const fileInput = document.getElementById('file-input');
+            const tagInput = document.getElementById('tag-input');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please select a file");
+                return;
+            }
+
+            statusDiv.innerText = "Uploading to server...";
+
+            // A. Upload to Backend (MinIO + AI)
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("tag", tagInput.value);
+
+            try {
+                const res = await fetch('http://localhost:8080/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.error) throw new Error(data.error);
+
+                statusDiv.innerText = "Server upload success. AI Summary: " + (data.summary || "None") + ". Waiting for wallet signature...";
+                console.log("Server response:", data);
+
+                // B. Register on Blockchain (User signs)
+                if (!contract) {
+                    statusDiv.innerText += " (Contract not configured, skipping chain registration)";
+                    return;
+                }
+
+                const tx = await contract.registerDocument(
+                    data.filename,
+                    data.hash,
+                    data.object, // minioId
+                    data.tag
+                );
+
+                statusDiv.innerText = "Transaction sent: " + tx.hash + ". Waiting for confirmation...";
+                await tx.wait();
+
+                statusDiv.innerText = "Success! Document registered on blockchain.";
+                loadDocuments();
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerText = "Error: " + error.message;
+            }
+        });
+
+        // 3. Load Documents (Mock implementation for demo)
+        // Since the contract 'documents' array is global or we need to filter by owner, 
+        // a real app would use an indexer (The Graph) or iterate events.
+        // For this demo, we'll just show a placeholder or try to read the last few if possible.
+        // BUT, since we don't have the contract address injected dynamically easily without a build step,
+        // we will just show the logic.
+        async function loadDocuments() {
+            if (!contract) return;
+
+            docList.innerHTML = "<p>Loading documents from blockchain...</p>";
+
+            try {
+                const count = await contract.documentCount();
+                const totalDocs = count.toNumber();
+
+                if (totalDocs === 0) {
+                    docList.innerHTML = "<p>No documents found on the contract.</p>";
+                    return;
+                }
+
+                let html = "";
+                let found = 0;
+
+                // Iterate backwards to show newest first
+                for (let i = totalDocs - 1; i >= 0; i--) {
+                    const doc = await contract.documents(i);
+
+                    // Filter by current user
+                    if (doc.uploader.toLowerCase() === userAddress.toLowerCase()) {
+                        found++;
+                        const date = new Date(doc.timestamp.toNumber() * 1000).toLocaleString();
+
+                        // Construct preview URL
+                        // Assuming minioId is the object name like "docs/..."
+                        // We need to encode it properly or just append if it's safe
+                        const previewUrl = `/preview/${encodeURIComponent(doc.minioId)}`;
+
+                        html += `
+                            <div class="doc-item">
+                                <div class="doc-info">
+                                    <strong>${doc.filename}</strong> <span style="font-size:0.8em; color:#6b7280;">(${doc.tag})</span><br>
+                                    <span style="font-size:0.8em">Uploaded: ${date}</span>
+                                </div>
+                                <div class="doc-actions">
+                                    <a href="${previewUrl}" target="_blank">Preview</a>
+                                    <a href="https://sepolia.etherscan.io/tx/${doc.hash}" target="_blank" title="View Transaction (Hash stored as hash)">Tx</a>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                if (found === 0) {
+                    docList.innerHTML = "<p>You haven't uploaded any documents yet.</p>";
+                } else {
+                    docList.innerHTML = html;
+                }
+
+            } catch (error) {
+                console.error("Error loading documents:", error);
+                docList.innerHTML = `<p style="color:red">Error loading documents: ${error.message}</p>`;
+            }
+        }
+
+        refreshBtn.addEventListener('click', loadDocuments);
+
+    </script>
+</body>
+
+</html>
