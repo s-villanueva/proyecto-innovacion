@@ -81,7 +81,7 @@ func UploadFile(c *gin.Context) {
 	response := gin.H{
 		"object":   objectName,
 		"hash":     hashHex,
-		"bucket":   services.BucketName,
+		"bucket":   services.StorageBucket,
 		"tag":      tag,
 		"filename": fileHeader.Filename,
 		"summary":  summary,

@@ -7,27 +7,29 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type MinIOConfig struct {
-	Endpoint   string
-	AccessKey  string
-	SecretKey  string
-	BucketName string
+type S3Config struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	Region    string
 }
 
-func LoadMinIOConfig() MinIOConfig {
+func LoadS3Config() S3Config {
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: could not load .env:", err)
 	}
 
-	cfg := MinIOConfig{
-		Endpoint:   os.Getenv("MINIO_URL"),
-		AccessKey:  os.Getenv("ACCESS_KEY"),
-		SecretKey:  os.Getenv("SECRET_KEY"),
-		BucketName: os.Getenv("MINIO_BUCKET"),
+	cfg := S3Config{
+		Endpoint:  os.Getenv("S3_ENDPOINT"),
+		AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
+		SecretKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		Bucket:    os.Getenv("S3_BUCKET"),
+		Region:    os.Getenv("AWS_REGION"),
 	}
 
-	if cfg.Endpoint == "" || cfg.AccessKey == "" || cfg.SecretKey == "" || cfg.BucketName == "" {
-		log.Fatal("Missing MinIO environment variables")
+	if cfg.Endpoint == "" || cfg.AccessKey == "" || cfg.SecretKey == "" || cfg.Bucket == "" {
+		log.Fatal("Missing S3 environment variables")
 	}
 
 	return cfg

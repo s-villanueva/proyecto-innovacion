@@ -255,6 +255,22 @@
     "url": "http://127.0.0.1:9000/token/docs/1765481628-1f47d5c4.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Credential=admin%2F20251211%2Fus-east-1%2Fs3%2Faws4_request\u0026X-Amz-Date=20251211T193558Z\u0026X-Amz-Expires=3600\u0026X-Amz-SignedHeaders=host\u0026X-Amz-Signature=5c9d7bd95d9dc7a92107213a3b537362843cdcb3d48284d15735348851e592de",
     "deleted": false
   },
+  "23": {
+    "id": "23",
+    "minioId": "docs/1765517620-4009c01d.pdf",
+    "name": "innovacion.pdf",
+    "size": "Unknown",
+    "date": "Dec 12, 2025",
+    "hash": "4009c01d1c97c8985cda9f6082ce65177360c55619486e4a4c980d56ff7bd249",
+    "aiStatus": "Processed",
+    "verificationStatus": "Verified",
+    "type": "pdf",
+    "category": "Académico",
+    "summary": "El documento proporciona apuntes sobre el Eje 1, conceptualizando la creatividad, identificando obstáculos y mitos, relacionándola con el cerebro y los tipos de pensamiento, y presentando métodos para desarrollarla.",
+    "validity": "N/A",
+    "url": "https://ixfiawsbekmxmqghsssh.storage.supabase.co/storage/v1/s3/docs/docs/1765517620-4009c01d.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Credential=606629bd792a4b64f2490ad62f2d08e0%2F20251212%2Fus-west-2%2Fs3%2Faws4_request\u0026X-Amz-Date=20251212T053401Z\u0026X-Amz-Expires=3600\u0026X-Amz-SignedHeaders=host\u0026X-Amz-Signature=475a291498eb038f1327d1af8add9fff7a3f2819e9349d89d4c24a890124afd5",
+    "deleted": false
+  },
   "3": {
     "id": "3",
     "minioId": "docs/1764646851-64a3a8b8.pdf",

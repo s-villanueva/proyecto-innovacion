@@ -12,7 +12,6 @@ import (
 	"main/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/minio/minio-go/v7"
 )
 
 // Inyecta servicios desde tu main/router
@@ -351,27 +350,35 @@ func (dc *DocumentController) ChatHandler(c *gin.Context) {
 	}
 
 	// Try to get cached text first (fast path)
+	// Try to get cached text first (fast path)
 	documentText, err := services.GetTextCache(id)
 	if err != nil {
-		// Cache miss - fallback to downloading from MinIO and extracting (for old documents)
-		log.Printf("Cache miss for document %s, downloading from MinIO...", id)
+		// Cache miss - fallback to downloading from Supabase and extracting (for old documents)
+		log.Printf("Cache miss for document %s, downloading from Storage...", id)
 
-		// Download from MinIO
-		obj, err := services.MinioClient.GetObject(
-			c.Request.Context(),
-			services.BucketName,
-			meta.MinioID,
-			minio.GetObjectOptions{},
-		)
+		// Download from Storage using Presigned URL or direct download if public
+		// Since we have GetPresignedURL, let's use that to get a URL and then download it
+		url, err := services.GetPresignedURL(meta.MinioID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve document", "details": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get download url", "details": err.Error()})
 			return
 		}
-		defer obj.Close()
+
+		resp, err := http.Get(url)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to download document", "details": err.Error()})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to download document", "details": resp.Status})
+			return
+		}
 
 		// Read content
 		buf := new(bytes.Buffer)
-		_, err = buf.ReadFrom(obj)
+		_, err = buf.ReadFrom(resp.Body)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read document", "details": err.Error()})
 			return
@@ -418,25 +425,30 @@ func (dc *DocumentController) RegenerateSummaryHandler(c *gin.Context) {
 	// Try to get cached text first (fast path)
 	documentText, err := services.GetTextCache(id)
 	if err != nil {
-		// Cache miss - fallback to downloading from MinIO and extracting (for old documents)
-		log.Printf("Cache miss for document %s, downloading from MinIO...", id)
+		// Cache miss - fallback to downloading from Storage and extracting
+		log.Printf("Cache miss for document %s, downloading from Storage...", id)
 
-		// Download from MinIO
-		obj, err := services.MinioClient.GetObject(
-			c.Request.Context(),
-			services.BucketName,
-			meta.MinioID,
-			minio.GetObjectOptions{},
-		)
+		url, err := services.GetPresignedURL(meta.MinioID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve document", "details": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get download url", "details": err.Error()})
 			return
 		}
-		defer obj.Close()
+
+		resp, err := http.Get(url)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to download document", "details": err.Error()})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to download document", "details": resp.Status})
+			return
+		}
 
 		// Read content
 		buf := new(bytes.Buffer)
-		_, err = buf.ReadFrom(obj)
+		_, err = buf.ReadFrom(resp.Body)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read document", "details": err.Error()})
 			return
