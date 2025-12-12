@@ -8,7 +8,7 @@ interface DocumentTableProps {
   onDelete: (id: string) => void;
 }
 
-const getIconForType = (type: Document['type']) => {
+const getIconForType = (_type: Document['type']) => {
   return 'picture_as_pdf'; // Always PDF
 };
 
