@@ -271,6 +271,38 @@
     "url": "https://ixfiawsbekmxmqghsssh.storage.supabase.co/storage/v1/s3/docs/docs/1765517620-4009c01d.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Credential=606629bd792a4b64f2490ad62f2d08e0%2F20251212%2Fus-west-2%2Fs3%2Faws4_request\u0026X-Amz-Date=20251212T053401Z\u0026X-Amz-Expires=3600\u0026X-Amz-SignedHeaders=host\u0026X-Amz-Signature=475a291498eb038f1327d1af8add9fff7a3f2819e9349d89d4c24a890124afd5",
     "deleted": false
   },
+  "25": {
+    "id": "25",
+    "minioId": "docs/1765566576-test-upload.pdf",
+    "name": "test-upload.pdf",
+    "size": "Ȥ B",
+    "date": "Dec 12, 2025",
+    "hash": "3eb79e4e55b4e2dcd608310d74fd933e4e8cd089cb1b6df6a27e6ddbbe930c97",
+    "aiStatus": "Failed",
+    "verificationStatus": "Verified",
+    "type": "pdf",
+    "category": "Test",
+    "summary": "Pending analysis...",
+    "validity": "N/A",
+    "url": "",
+    "deleted": false
+  },
+  "26": {
+    "id": "26",
+    "minioId": "docs/1765566719-TOPICO A  (1).pdf",
+    "name": "TOPICO A  (1).pdf",
+    "size": "1.9 MB",
+    "date": "Dec 12, 2025",
+    "hash": "402465a9925fe032f4eb309326b7892c35c9ad04e6adce3fffa91b252a835a3e",
+    "aiStatus": "Processed",
+    "verificationStatus": "Verified",
+    "type": "pdf",
+    "category": "Política Internacional",
+    "summary": "El documento presenta la posición oficial del Reino de Marruecos respecto a la ampliación o eliminación del derecho a veto en el Consejo de Seguridad de la ONU. Marruecos busca mantener la estabilidad y eficacia del Consejo, promover una reforma gradual y basada en consenso, fortalecer la representación africana en el Consejo, preservar sus relaciones estratégicas y promover un uso responsable del derecho a veto.",
+    "validity": "N/A",
+    "url": "",
+    "deleted": false
+  },
   "3": {
     "id": "3",
     "minioId": "docs/1764646851-64a3a8b8.pdf",

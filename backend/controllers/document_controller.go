@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"main/services"
 
@@ -53,10 +54,12 @@ func (dc *DocumentController) UploadHandler(c *gin.Context) {
 	}
 
 	// 1. Upload to storage
-	objectName := fmt.Sprintf("docs/%d-%s", c.Request.Context().Value("timestamp"), fileHeader.Filename)
+	timestamp := time.Now().Unix()
+	objectName := fmt.Sprintf("docs/%d-%s", timestamp, fileHeader.Filename)
 	err = services.UploadObject(objectName, content, fileHeader.Header.Get("Content-Type"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Storage upload failed"})
+		log.Printf("Storage upload failed: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Storage upload failed: %v", err)})
 		return
 	}
 
@@ -100,7 +103,7 @@ func (dc *DocumentController) UploadHandler(c *gin.Context) {
 	}
 
 	// 5. Generate document ID
-	docID := fmt.Sprintf("%d", c.Request.Context().Value("timestamp"))
+	docID := fmt.Sprintf("%d", timestamp)
 	if dc.Eth != nil {
 		count, _ := dc.Eth.GetDocumentCount()
 		if count != nil {
