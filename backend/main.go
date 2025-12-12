@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"main/config"
+	"main/controllers"
 	"main/routes"
 	"main/services"
 
@@ -93,6 +94,17 @@ func main() {
 	r.Static("/public", "./public")
 	r.StaticFile("/", "./public/index.html")
 
-	routes.RegisterRoutes(r)
+	// Init Metadata Store
+	if err := services.InitMetadataStore("metadata.json"); err != nil {
+		fmt.Println("Warning: could not load metadata store:", err)
+	}
+
+	// Init Text Cache
+	if err := services.InitTextCache(); err != nil {
+		fmt.Println("Warning: could not initialize text cache:", err)
+	}
+
+	dc := controllers.NewDocumentController(services.Eth, ethCfg.PrivateKey, services.Store)
+	routes.RegisterRoutes(r, dc)
 	r.Run(":8080")
 }

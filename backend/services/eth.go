@@ -102,3 +102,8 @@ func (e *EthService) GetDocument(id *big.Int) (contracts.FileDocument, error) {
 func (e *EthService) VerifyDocument(id *big.Int, givenHash string) (bool, error) {
 	return e.Contract.VerifyDocument(&bind.CallOpts{Context: e.Context}, id, givenHash)
 }
+
+// GetDocumentCount (call)
+func (e *EthService) GetDocumentCount() (*big.Int, error) {
+	return e.Contract.DocumentCount(&bind.CallOpts{Context: e.Context})
+}

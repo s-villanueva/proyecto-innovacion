@@ -60,3 +60,20 @@ func UploadObject(name string, data []byte, contentType string) error {
 	)
 	return err
 }
+
+// GetPresignedURL generates a temporary presigned URL for viewing/downloading a file
+func GetPresignedURL(objectName string) (string, error) {
+	// Generate presigned URL valid for 1 hour
+	url, err := MinioClient.PresignedGetObject(
+		context.Background(),
+		BucketName,
+		objectName,
+		time.Hour*1,
+		nil,
+	)
+	if err != nil {
+		log.Println("Error generating presigned URL:", err)
+		return "", err
+	}
+	return url.String(), nil
+}
