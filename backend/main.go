@@ -1,27 +1,48 @@
 package main
 
 import (
-	"fmt"
-
+	"log"
 	"main/config"
 	"main/controllers"
 	"main/routes"
 	"main/services"
+	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Demo upload removed as it depended on MinIO SDK
+	// Load .env
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
 
-	cfg := config.LoadS3Config()
-	services.InitStorage(cfg)
+	// Initialize JSON Metadata Store
+	if err := services.InitMetadataStore("metadata.json"); err != nil {
+		log.Fatal("Failed to init metadata store:", err)
+	}
 
+	// Initialize Storage (MinIO/S3)
+	s3Cfg := config.LoadS3Config()
+	services.InitStorage(s3Cfg)
+
+	// Initialize Ethereum
 	ethCfg := config.LoadEthConfig()
 	services.InitEth(ethCfg)
 
+	// Initialize text cache
+	if err := services.InitTextCache(); err != nil {
+		log.Println("Warning: could not initialize text cache:", err)
+	}
+
+	// Initialize Controller
+	docController := controllers.NewDocumentController(services.Eth, ethCfg.PrivateKey, services.Store)
+
+	// Setup Router
 	r := gin.Default()
-	// CORS middleware for frontend
+
+	// CORS
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -33,20 +54,12 @@ func main() {
 		c.Next()
 	})
 
-	r.Static("/public", "./public")
-	r.StaticFile("/", "./public/index.html")
+	// Register routes without authentication middleware
+	routes.RegisterRoutes(r, docController)
 
-	// Init Metadata Store
-	if err := services.InitMetadataStore("metadata.json"); err != nil {
-		fmt.Println("Warning: could not load metadata store:", err)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
-
-	// Init Text Cache
-	if err := services.InitTextCache(); err != nil {
-		fmt.Println("Warning: could not initialize text cache:", err)
-	}
-
-	dc := controllers.NewDocumentController(services.Eth, ethCfg.PrivateKey, services.Store)
-	routes.RegisterRoutes(r, dc)
-	r.Run(":8080")
+	r.Run(":" + port)
 }

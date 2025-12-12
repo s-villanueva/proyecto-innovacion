@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(r *gin.Engine, dc *controllers.DocumentController) {
-	r.POST("/upload", controllers.UploadFile)
+func RegisterRoutes(r gin.IRouter, dc *controllers.DocumentController) {
+	r.POST("/upload", dc.UploadHandler)
 	r.GET("/preview/*filename", controllers.PreviewFile)
 	r.GET("/documents", dc.ListDocuments)
 	r.GET("/documents/:id/preview", dc.GetPreviewURL)
