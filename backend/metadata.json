@@ -303,6 +303,22 @@
     "url": "",
     "deleted": false
   },
+  "28": {
+    "id": "28",
+    "minioId": "docs/1765569497-Robot Lab Arquitectura.pdf",
+    "name": "Robot Lab Arquitectura.pdf",
+    "size": "240.9 KB",
+    "date": "Dec 12, 2025",
+    "hash": "2f0bfba2b931fa70e0d58df3b968d06969b4cb73444d0f471456277be5e052c4",
+    "aiStatus": "Processed",
+    "verificationStatus": "Verified",
+    "type": "pdf",
+    "category": "Técnico",
+    "summary": "Implementación de un entorno seguro para control remoto de un robot mediante un servidor VNC y un Bridge Server, con restricciones de acceso y privilegios limitados para los usuarios. Uso de TCP/IP para comunicación directa con el robot y simplificación de comandos mediante funciones de alto nivel.",
+    "validity": "N/A",
+    "url": "",
+    "deleted": false
+  },
   "3": {
     "id": "3",
     "minioId": "docs/1764646851-64a3a8b8.pdf",

@@ -37,10 +37,8 @@ const AuthenticatedApp: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
+    fetchData();
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this document?")) {
@@ -148,9 +146,9 @@ const AuthenticatedApp: React.FC = () => {
     );
   }
 
-  if (!user) {
-    return <LoginView />;
-  }
+  // if (!user) {
+  //   return <LoginView />;
+  // }
 
   return (
     <div className="flex h-screen w-full">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export const LoginView: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -109,6 +109,16 @@ export const LoginView: React.FC = () => {
                     </p>
                 </div>
             </div>
+
+            {/* Debug Info */}
+            <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-mono text-left w-full max-w-md overflow-auto">
+                <p className="font-bold mb-2">Debug Info:</p>
+                <p>Supabase Configured: {isSupabaseConfigured ? 'Yes' : 'No'}</p>
+                <p>Supabase URL: {import.meta.env.VITE_SUPABASE_URL ? 'Set' : 'Missing'}</p>
+                <p>Supabase Key: {import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Missing'}</p>
+                {error && <p className="text-red-500 mt-2">Last Error: {error}</p>}
+            </div>
+
         </div>
     );
 };

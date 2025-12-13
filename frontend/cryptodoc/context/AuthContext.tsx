@@ -17,21 +17,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
+        // Add timeout to prevent infinite loading
+        const timeout = setTimeout(() => {
+            console.warn('Supabase auth timeout - stopping loading state');
             setLoading(false);
-        });
+        }, 3000);
+
+        // Check active session
+        supabase.auth.getSession()
+            .then(({ data: { session }, error }) => {
+                if (error) {
+                    console.error('Supabase getSession error:', error);
+                }
+                setSession(session);
+                setUser(session?.user ?? null);
+                setLoading(false);
+                clearTimeout(timeout);
+            })
+            .catch(err => {
+                console.error('Failed to get session:', err);
+                setLoading(false);
+                clearTimeout(timeout);
+            });
 
         // Listen for changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            console.log('Auth state change:', _event, session);
             setSession(session);
             setUser(session?.user ?? null);
-            setLoading(false);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(timeout);
+        };
     }, []);
 
     const signOut = async () => {
