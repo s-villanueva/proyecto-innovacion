@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Document } from '../types';
 import { api } from '../services/api';
+import { Document } from '../types';
 
 interface InsightsViewProps {
   documents: Document[];
@@ -13,7 +13,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ documents, initialDo
   const [messages, setMessages] = useState<{ role: 'user' | 'agent', text: string }[]>([
     { role: 'agent', text: 'Hello! I have analyzed this document. Feel free to ask me anything about its contents, dates, or financial figures.' }
   ]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedDoc = documents.find(d => d.id === selectedDocId);
@@ -21,42 +21,47 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ documents, initialDo
   // Scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [messages]);
 
   // Reset chat when switching docs
   useEffect(() => {
-    if (selectedDocId) {
-      setMessages([{ role: 'agent', text: `I'm ready to answer questions about "${documents.find(d => d.id === selectedDocId)?.name}".` }]);
+    if (selectedDoc) {
+      setMessages([{ role: 'agent', text: `I'm ready to answer questions about "${selectedDoc.name}".` }]);
     }
-  }, [selectedDocId, documents]);
+  }, [selectedDocId, selectedDoc]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || !selectedDocId) return;
 
-    const question = chatInput;
-    setMessages(prev => [...prev, { role: 'user', text: question }]);
+    const userMessage = chatInput;
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setChatInput('');
-    setIsTyping(true);
 
     try {
-      const answer = await api.chatWithDocument(selectedDocId, question);
+      const answer = await api.chatWithDocument(selectedDocId, userMessage);
       setMessages(prev => [...prev, { role: 'agent', text: answer }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'agent', text: "Sorry, I encountered an error processing your request." }]);
-    } finally {
-      setIsTyping(false);
+      console.error("Chat Error:", error);
+      setMessages(prev => [...prev, { role: 'agent', text: "Sorry, I'm having trouble connecting to the AI service right now." }]);
     }
   };
 
   const handleRegenerateSummary = async () => {
     if (!selectedDocId) return;
+
+    setIsRegenerating(true);
     try {
-      await api.regenerateSummary(selectedDocId);
-      alert('Summary regenerated! Please refresh to see changes.');
-      // Ideally we would trigger a refresh of the documents list here
+      const result = await api.regenerateSummary(selectedDocId);
+      // Ideally we would update the document in the parent state here, 
+      // but for now we can just alert or rely on a refresh.
+      // In a real app, we'd pass an onUpdate callback.
+      alert("Summary regenerated! Please refresh the dashboard to see changes.");
     } catch (error) {
-      alert('Failed to regenerate summary');
+      console.error("Regenerate Error:", error);
+      alert("Failed to regenerate summary.");
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -164,7 +169,14 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ documents, initialDo
             )}
           </div>
           <div className="mt-4 pt-4 border-t border-[#e5e7eb] dark:border-[#324467] flex gap-2">
-            <button onClick={handleRegenerateSummary} className="text-xs font-bold text-secondary hover:underline">Regenerate</button>
+            <button
+              onClick={handleRegenerateSummary}
+              disabled={isRegenerating}
+              className="text-xs font-bold text-secondary hover:underline disabled:opacity-50 flex items-center gap-1"
+            >
+              {isRegenerating && <span className="material-symbols-outlined text-[14px] animate-spin">refresh</span>}
+              {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+            </button>
             <button className="text-xs font-bold text-[#637588] hover:text-text-main dark:text-[#92a4c9] dark:hover:text-white">Copy Text</button>
           </div>
         </div>
@@ -203,17 +215,6 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ documents, initialDo
               </div>
             </div>
           ))}
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-white dark:bg-[#1e2a40] border border-[#e5e7eb] dark:border-[#324467] rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></span>
-                </div>
-              </div>
-            </div>
-          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -226,11 +227,10 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ documents, initialDo
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Ask a question about this file..."
               className="w-full pl-4 pr-12 py-3 rounded-xl bg-[#f0f2f5] dark:bg-[#232f48] border-transparent focus:bg-white dark:focus:bg-[#1a2436] focus:border-secondary focus:ring-0 text-sm text-text-main dark:text-white transition-all shadow-inner"
-              disabled={isTyping}
             />
             <button
               type="submit"
-              disabled={!chatInput.trim() || isTyping}
+              disabled={!chatInput.trim()}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-primary text-white hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-primary transition-colors"
             >
               <span className="material-symbols-outlined text-[20px]">send</span>

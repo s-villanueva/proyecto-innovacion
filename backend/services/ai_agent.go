@@ -57,8 +57,21 @@ func AnalyzeDocument(documentContent string) (*DocumentAnalysis, error) {
 	godotenv.Load()
 	ctx := context.Background()
 
-	llm, err := openai.New(openai.WithToken(os.Getenv("OPENAI_API_KEY")))
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		fmt.Println("Error: OPENAI_API_KEY is not set in environment")
+		return nil, fmt.Errorf("OPENAI_API_KEY is not set")
+	}
+	// Log masked key for debugging
+	maskedKey := "******"
+	if len(apiKey) > 4 {
+		maskedKey = apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
+	}
+	fmt.Printf("Initializing OpenAI with key: %s\n", maskedKey)
+
+	llm, err := openai.New(openai.WithToken(apiKey))
 	if err != nil {
+		fmt.Printf("Error initializing OpenAI client: %v\n", err)
 		return nil, err
 	}
 
@@ -71,7 +84,7 @@ Por favor, proporciona tu análisis en formato JSON con la siguiente estructura:
 {
   "category": "Categoría principal del documento (ej: Legal, Financiero, Académico, Médico, Técnico, Administrativo, Identidad, Contrato, etc.)",
   "summary": "Resumen detallado del documento en español (máximo 500 caracteres)",
-  "validity": "Fecha de expiración o validez si se menciona en el documento (formato: 'DD/MM/YYYY' o 'N/A' si no aplica)",
+  "validity": "Vigencia o fecha de expiración en formato YYYY-MM-DD. Si es un contrato con duración (ej: '5 años'), CALCULA la fecha exacta de fin sumando la duración a la fecha de inicio del documento. Si no encuentras fecha de inicio, usa la fecha actual como base. Si es indefinido, usa 'Indefinido'. Si no aplica, usa 'N/A'.",
   "key_points": "3-5 puntos clave del documento separados por punto y coma",
   "document_type": "Tipo específico de documento (ej: Factura, Contrato de Trabajo, Certificado Médico, etc.)"
 }
@@ -113,8 +126,15 @@ func ChatWithDocument(documentContent string, question string) (string, error) {
 	godotenv.Load()
 	ctx := context.Background()
 
-	llm, err := openai.New(openai.WithToken(os.Getenv("OPENAI_API_KEY")))
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		fmt.Println("Error: OPENAI_API_KEY is not set")
+		return "", fmt.Errorf("OPENAI_API_KEY is not set")
+	}
+
+	llm, err := openai.New(openai.WithToken(apiKey))
 	if err != nil {
+		fmt.Printf("Error initializing OpenAI for chat: %v\n", err)
 		return "", fmt.Errorf("failed to initialize AI: %w", err)
 	}
 
@@ -148,10 +168,17 @@ func RegenerateSummary(documentContent string) (string, error) {
 	godotenv.Load()
 	ctx := context.Background()
 
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		fmt.Println("Error: OPENAI_API_KEY is not set")
+		return "", fmt.Errorf("OPENAI_API_KEY is not set")
+	}
+
 	llm, err := openai.New(
-		openai.WithToken(os.Getenv("OPENAI_API_KEY")),
+		openai.WithToken(apiKey),
 	)
 	if err != nil {
+		fmt.Printf("Error initializing OpenAI for regeneration: %v\n", err)
 		return "", err
 	}
 

@@ -59,3 +59,23 @@ func GetPresignedURL(objectName string) (string, error) {
 	}
 	return urlStr, nil
 }
+
+// DownloadObject retrieves a file from S3
+func DownloadObject(name string) ([]byte, error) {
+	resp, err := S3Client.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(StorageBucket),
+		Key:    aws.String(name),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}

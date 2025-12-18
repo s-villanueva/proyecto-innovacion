@@ -82,24 +82,33 @@ func (dc *DocumentController) UploadHandler(c *gin.Context) {
 	aiStatus := "Queued"
 
 	text, err := services.ExtractTextFromPDFBytes(content)
-	if err == nil && text != "" {
+	if err != nil {
+		log.Printf("Text extraction failed: %v", err)
+		aiStatus = "Failed"
+	} else if text == "" {
+		log.Printf("Text extraction returned empty string")
+		aiStatus = "Failed"
+	} else {
+		log.Printf("Text extracted successfully, length: %d", len(text))
 		analysis, err := services.AnalyzeDocument(text)
 		if err == nil && analysis != nil {
+			log.Printf("AI Analysis successful: %+v", analysis)
 			summary = analysis.Summary
 			category = analysis.Category
 			validity = analysis.Validity
 			aiStatus = "Processed"
 		} else {
+			log.Printf("AI Analysis failed: %v", err)
 			generatedSummary, err := services.GenerateCompletion(text)
 			if err == nil {
+				log.Printf("Fallback summary generation successful")
 				summary = generatedSummary
 				aiStatus = "Processed"
 			} else {
+				log.Printf("Fallback summary generation failed: %v", err)
 				aiStatus = "Failed"
 			}
 		}
-	} else {
-		aiStatus = "Failed"
 	}
 
 	// 5. Generate document ID
@@ -173,6 +182,7 @@ func (dc *DocumentController) GetStats(c *gin.Context) {
 	ai := 0
 
 	for _, doc := range docs {
+		// log.Printf("Doc ID: %s, Ver: %s, AI: %s", doc.ID, doc.VerificationStatus, doc.AIStatus)
 		if doc.VerificationStatus == "Verified" {
 			verified++
 		}
@@ -180,6 +190,7 @@ func (dc *DocumentController) GetStats(c *gin.Context) {
 			ai++
 		}
 	}
+	log.Printf("Stats calculated: Total=%d, Verified=%d, AI=%d", total, verified, ai)
 
 	stats := []gin.H{
 		{"label": "Total Documents", "value": strconv.Itoa(total), "change": "+0%", "icon": "description"},
@@ -231,9 +242,27 @@ func (dc *DocumentController) RegenerateSummaryHandler(c *gin.Context) {
 	// Try to get cached text first
 	documentText, err := services.GetTextCache(id)
 	if err != nil {
-		// Cache miss - return error as we need full text for re-analysis
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Document text not available for re-analysis"})
-		return
+		// Cache miss - try to download from storage
+		log.Printf("Cache miss for document %s, attempting to download from storage...", id)
+		content, err := services.DownloadObject(meta.MinioID)
+		if err != nil {
+			log.Printf("Failed to download object %s: %v", meta.MinioID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Document text not available and download failed"})
+			return
+		}
+
+		// Extract text from downloaded content
+		documentText, err = services.ExtractTextFromPDFBytes(content)
+		if err != nil {
+			log.Printf("Failed to extract text from downloaded PDF: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract text from document"})
+			return
+		}
+
+		// Save to cache for next time
+		if err := services.SaveTextCache(id, documentText); err != nil {
+			log.Printf("Warning: failed to save text cache: %v", err)
+		}
 	}
 
 	// Perform comprehensive AI analysis
@@ -277,9 +306,24 @@ func (dc *DocumentController) ChatHandler(c *gin.Context) {
 	// Try to get cached text first
 	documentText, err := services.GetTextCache(id)
 	if err != nil {
-		// Cache miss - use summary as fallback
-		log.Printf("Cache miss for document %s, using summary", id)
-		documentText = meta.Summary
+		// Cache miss - try to download from storage
+		log.Printf("Cache miss for document %s, attempting to download from storage...", id)
+		content, err := services.DownloadObject(meta.MinioID)
+		if err == nil {
+			// Extract text from downloaded content
+			extractedText, err := services.ExtractTextFromPDFBytes(content)
+			if err == nil && extractedText != "" {
+				documentText = extractedText
+				// Save to cache for next time
+				services.SaveTextCache(id, documentText)
+			} else {
+				log.Printf("Failed to extract text from downloaded PDF: %v", err)
+				documentText = meta.Summary // Fallback to summary if extraction fails
+			}
+		} else {
+			log.Printf("Failed to download object %s: %v", meta.MinioID, err)
+			documentText = meta.Summary // Fallback to summary if download fails
+		}
 	}
 
 	// Use AI to answer question

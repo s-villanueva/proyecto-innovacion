@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
+import { Document } from '../types';
 
 interface UploadViewProps {
-  onUploadSuccess?: () => void;
+  onUploadComplete?: (doc: Document) => void;
 }
 
-export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
+export const UploadView: React.FC<UploadViewProps> = ({ onUploadComplete }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [tags, setTags] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -28,6 +30,12 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       setSelectedFile(file);
+      // Auto-detect some basic tags based on filename
+      const fileName = file.name.toLowerCase();
+      const detectedTags = ['Document', 'Pending'];
+      if (fileName.includes('invoice')) detectedTags.push('Finance');
+      if (fileName.includes('contract')) detectedTags.push('Legal');
+      setTags(detectedTags.join(', '));
     }
   };
 
@@ -36,6 +44,12 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
+      // Auto-detect some basic tags based on filename
+      const fileName = file.name.toLowerCase();
+      const detectedTags = ['Document', 'Pending'];
+      if (fileName.includes('invoice')) detectedTags.push('Finance');
+      if (fileName.includes('contract')) detectedTags.push('Legal');
+      setTags(detectedTags.join(', '));
     }
   };
 
@@ -43,17 +57,24 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
     if (!selectedFile) return;
 
     setIsUploading(true);
+    setError(null);
+
     try {
-      await api.uploadDocument(selectedFile, tags || 'General');
-      alert('Document uploaded successfully!');
-      setSelectedFile(null);
-      setTags('');
-      if (onUploadSuccess) {
-        onUploadSuccess();
+      // Call the API service
+      const newDoc = await api.uploadDocument(selectedFile, tags);
+
+      if (newDoc) {
+        if (onUploadComplete) {
+          onUploadComplete(newDoc);
+        } else {
+          alert("Upload Successful!");
+          setSelectedFile(null);
+          setTags('');
+        }
       }
-    } catch (error: any) {
-      console.error('Upload failed:', error);
-      alert(`Upload failed: ${error.message}`);
+    } catch (err: any) {
+      console.error("Upload Error:", err);
+      setError(err.message || "Upload failed due to server error");
     } finally {
       setIsUploading(false);
     }
@@ -70,6 +91,14 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
 
       <div className="flex flex-col gap-6 bg-white dark:bg-[#1a2436] p-6 rounded-xl border border-[#e5e7eb] dark:border-[#324467] shadow-sm">
 
+        {/* Error Message */}
+        {error && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-medium">
+            <span className="material-symbols-outlined text-[18px]">error</span>
+            {error}
+          </div>
+        )}
+
         {/* Drag & Drop Zone */}
         <div
           className={`relative flex flex-col items-center justify-center w-full h-64 rounded-xl border-2 border-dashed transition-all duration-300 ${dragActive
@@ -83,9 +112,9 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
         >
           <input
             type="file"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            onChange={handleChange}
             disabled={isUploading}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
+            onChange={handleChange}
           />
 
           {selectedFile ? (
@@ -103,8 +132,8 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
                   setSelectedFile(null);
                   setTags('');
                 }}
-                className="text-red-500 hover:text-red-600 text-sm font-medium z-20 hover:underline"
                 disabled={isUploading}
+                className="text-red-500 hover:text-red-600 text-sm font-medium z-20 hover:underline disabled:opacity-50"
               >
                 Remove file
               </button>
@@ -129,9 +158,9 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
             <input
               type="text"
               defaultValue={selectedFile?.name.split('.')[0] || ''}
-              placeholder="e.g. Q3 Financial Report"
-              className="px-4 py-2.5 rounded-lg bg-[#f9fafb] dark:bg-[#232f48] border border-[#e5e7eb] dark:border-[#324467] text-text-main dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all"
               disabled={isUploading}
+              placeholder="e.g. Q3 Financial Report"
+              className="px-4 py-2.5 rounded-lg bg-[#f9fafb] dark:bg-[#232f48] border border-[#e5e7eb] dark:border-[#324467] text-text-main dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all disabled:opacity-50"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -146,9 +175,9 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
                 type="text"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                placeholder="e.g. Finance, Confidential"
-                className="w-full pl-10 px-4 py-2.5 rounded-lg bg-[#f9fafb] dark:bg-[#232f48] border border-[#e5e7eb] dark:border-[#324467] text-text-main dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all"
                 disabled={isUploading}
+                placeholder="e.g. Finance, Confidential"
+                className="w-full pl-10 px-4 py-2.5 rounded-lg bg-[#f9fafb] dark:bg-[#232f48] border border-[#e5e7eb] dark:border-[#324467] text-text-main dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all disabled:opacity-50"
               />
             </div>
           </div>
@@ -157,7 +186,7 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
         {/* Options */}
         <div className="flex flex-col gap-4 border-t border-[#e5e7eb] dark:border-[#324467] pt-6">
           <label className="flex items-center gap-3 cursor-pointer group">
-            <input type="checkbox" className="w-5 h-5 rounded border-gray-300 text-secondary focus:ring-secondary bg-gray-100 dark:bg-[#232f48] dark:border-[#324467]" defaultChecked disabled={isUploading} />
+            <input type="checkbox" className="w-5 h-5 rounded border-gray-300 text-secondary focus:ring-secondary bg-gray-100 dark:bg-[#232f48] dark:border-[#324467]" defaultChecked />
             <div className="flex flex-col">
               <span className="text-sm font-bold text-text-main dark:text-white group-hover:text-secondary transition-colors">Run AI Analysis</span>
               <span className="text-xs text-[#637588] dark:text-[#92a4c9]">Automatically extract insights and summaries upon upload.</span>
@@ -165,7 +194,7 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
           </label>
 
           <label className="flex items-center gap-3 cursor-pointer group">
-            <input type="checkbox" className="w-5 h-5 rounded border-gray-300 text-secondary focus:ring-secondary bg-gray-100 dark:bg-[#232f48] dark:border-[#324467]" defaultChecked disabled={isUploading} />
+            <input type="checkbox" className="w-5 h-5 rounded border-gray-300 text-secondary focus:ring-secondary bg-gray-100 dark:bg-[#232f48] dark:border-[#324467]" defaultChecked />
             <div className="flex flex-col">
               <span className="text-sm font-bold text-text-main dark:text-white group-hover:text-secondary transition-colors">Blockchain Verification</span>
               <span className="text-xs text-[#637588] dark:text-[#92a4c9]">Generate a unique hash and timestamp on the ledger.</span>
@@ -185,7 +214,7 @@ export const UploadView: React.FC<UploadViewProps> = ({ onUploadSuccess }) => {
           >
             {isUploading ? (
               <>
-                <span className="material-symbols-outlined animate-spin">refresh</span>
+                <span className="material-symbols-outlined animate-spin">progress_activity</span>
                 Uploading...
               </>
             ) : (
